@@ -1,31 +1,51 @@
 #!/usr/bin/env bash
-# Installer for claude-usage-emailer on macOS and Raspberry Pi. Safe to run more than once.
+# Installer for claude-usage-emailer on macOS and Linux (including Raspberry Pi).
+# Safe to run more than once. Run with --uninstall to remove it.
 #
 # Optional environment variables:
 #   INSTALL_DIR    where to install           (default ~/claude-usage-emailer)
 #   SEND_HOUR      hour to send, 0-23         (default 8)
 #   SEND_MINUTE    minute to send, 0-59       (default 0)
+#   SCHEDULER      Linux only: cron (default) or systemd
 #   SMTP_HOST SMTP_PORT SMTP_FROM SMTP_USERNAME SMTP_PASSWORD
 #                  fill the smtp section of config.json without editing it by hand
 set -euo pipefail
 
 OS="$(uname)"
-IS_PI=0
-grep -qi 'raspberry pi' /proc/device-tree/model 2>/dev/null && IS_PI=1
-if [ "$OS" != "Darwin" ] && [ "$IS_PI" != 1 ]; then
-  echo "This version of setup.sh supports macOS and Raspberry Pi only."
-  exit 1
-fi
+case "$OS" in
+  Darwin|Linux) ;;
+  *) echo "Unsupported system: $OS. setup.sh supports macOS and Linux."; exit 1 ;;
+esac
 
 SRC="$(cd "$(dirname "$0")" && pwd)"
 DEST="${INSTALL_DIR:-$HOME/claude-usage-emailer}"
-HOUR="${SEND_HOUR:-8}"
-MINUTE="${SEND_MINUTE:-0}"
+HOUR=$((10#${SEND_HOUR:-8}))
+MINUTE=$((10#${SEND_MINUTE:-0}))
 LABEL="com.github.claude-usage-emailer"
+UNIT="claude-usage-emailer"
+SCHEDULER="${SCHEDULER:-cron}"
+
+if [ "${1:-}" = "--uninstall" ]; then
+  if [ "$OS" = "Darwin" ]; then
+    launchctl unload "$HOME/Library/LaunchAgents/$LABEL.plist" 2>/dev/null || true
+    rm -f "$HOME/Library/LaunchAgents/$LABEL.plist"
+  else
+    if command -v crontab >/dev/null; then
+      { crontab -l 2>/dev/null | grep -v '# claude-usage-emailer' || true; } | crontab -
+    fi
+    if command -v systemctl >/dev/null; then
+      systemctl --user disable --now "$UNIT.timer" 2>/dev/null || true
+      rm -f "$HOME/.config/systemd/user/$UNIT.service" "$HOME/.config/systemd/user/$UNIT.timer"
+      systemctl --user daemon-reload 2>/dev/null || true
+    fi
+  fi
+  echo "Schedule removed. Delete $DEST yourself if you no longer need the config or logs."
+  exit 0
+fi
 PY="$(command -v python3 || true)"
 if [ -z "$PY" ]; then
   if [ "$OS" = "Darwin" ]; then echo "python3 not found. Run: xcode-select --install"
-  else echo "python3 not found. Run: sudo apt install python3"; fi
+  else echo "python3 not found. Install it with your package manager, e.g. sudo apt install python3"; fi
   exit 1
 fi
 
@@ -83,7 +103,7 @@ PLIST
 }
 
 schedule_cron() {
-  command -v crontab >/dev/null || { echo "crontab not found. Run: sudo apt install cron"; exit 1; }
+  command -v crontab >/dev/null || { echo "crontab not found. Install cron, or re-run with SCHEDULER=systemd"; exit 1; }
   local line="$MINUTE $HOUR * * * cd $DEST && $PY usage_report.py >> run.log 2>&1 # claude-usage-emailer"
   { crontab -l 2>/dev/null | grep -v '# claude-usage-emailer' || true; echo "$line"; } | crontab -
   local tz; tz="$(cat /etc/timezone 2>/dev/null || date +%Z)"
@@ -91,7 +111,47 @@ schedule_cron() {
   echo "If that timezone is wrong, run: sudo timedatectl set-timezone <Area/City>"
 }
 
-if [ "$OS" = "Darwin" ]; then schedule_launchd; else schedule_cron; fi
+schedule_systemd() {
+  # A user timer with Persistent=true also catches up on a run missed while the
+  # machine was off. On a headless box, run once: sudo loginctl enable-linger $USER
+  local dir="$HOME/.config/systemd/user"
+  mkdir -p "$dir"
+  cat > "$dir/$UNIT.service" <<UNITEOF
+[Unit]
+Description=Email daily Claude API spend
+
+[Service]
+Type=oneshot
+WorkingDirectory=$DEST
+ExecStart=$PY $DEST/usage_report.py
+StandardOutput=append:$DEST/run.log
+StandardError=append:$DEST/run.log
+UNITEOF
+  cat > "$dir/$UNIT.timer" <<UNITEOF
+[Unit]
+Description=Daily Claude API spend email
+
+[Timer]
+OnCalendar=*-*-* $(printf '%02d:%02d' "$HOUR" "$MINUTE"):00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNITEOF
+  systemctl --user daemon-reload
+  systemctl --user enable --now "$UNIT.timer"
+  printf "Scheduled with a systemd user timer: every day at %02d:%02d.\n" "$HOUR" "$MINUTE"
+  loginctl show-user "$USER" -p Linger 2>/dev/null | grep -q yes \
+    || echo "To keep it running while you're logged out: sudo loginctl enable-linger $USER"
+}
+
+if [ "$OS" = "Darwin" ]; then
+  schedule_launchd
+elif [ "$SCHEDULER" = "systemd" ]; then
+  schedule_systemd
+else
+  schedule_cron
+fi
 
 # 5. Say what is left.
 echo

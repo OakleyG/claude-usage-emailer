@@ -39,9 +39,9 @@ bash setup.sh
 
 This installs to `~/claude-usage-emailer`, creates `config.json`, and schedules a run for 08:00 every day with launchd. If the Mac is asleep at 08:00, it sends when it wakes up. You can change the time with `SEND_HOUR=7 SEND_MINUTE=30 bash setup.sh`.
 
-## Install on a Raspberry Pi
+## Install on Linux or a Raspberry Pi
 
-Raspberry Pi OS already has Python 3. An always-on Pi is a good home for this, because it never misses a morning.
+Any Linux with Python 3 works, including Raspberry Pi OS, Ubuntu, Debian and Fedora. An always-on Pi or server is a good home for this, because it never misses a morning.
 
 ```bash
 git clone https://github.com/OakleyG/claude-usage-emailer.git
@@ -49,7 +49,9 @@ cd claude-usage-emailer
 bash setup.sh
 ```
 
-This installs to `~/claude-usage-emailer` and adds a cron job for 08:00. Cron uses the Pi's own timezone, so check it with `timedatectl` and set it with `sudo timedatectl set-timezone <Area/City>` if needed.
+This installs to `~/claude-usage-emailer` and adds a cron job for 08:00 in the machine's own timezone. Check the timezone with `timedatectl`, and set it with `sudo timedatectl set-timezone <Area/City>` if needed.
+
+If you'd rather use systemd, run `SCHEDULER=systemd bash setup.sh`. It sets up a user timer with `Persistent=true`, so a run missed while the machine was off happens at the next boot. On a headless machine, also run `sudo loginctl enable-linger $USER` so the timer keeps running when you're logged out.
 
 ## Configure
 
@@ -93,18 +95,8 @@ If you have an AI agent on the machine, point it at [AGENT_SETUP.md](AGENT_SETUP
 
 ## Uninstall
 
-macOS:
-
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.github.claude-usage-emailer.plist
-rm ~/Library/LaunchAgents/com.github.claude-usage-emailer.plist
-rm -rf ~/claude-usage-emailer
-```
-
-Raspberry Pi:
-
-```bash
-crontab -l | grep -v '# claude-usage-emailer' | crontab -
+bash ~/claude-usage-emailer/setup.sh --uninstall
 rm -rf ~/claude-usage-emailer
 ```
 
