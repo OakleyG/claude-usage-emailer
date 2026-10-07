@@ -27,7 +27,7 @@ You can mix both kinds of members in one config. Anything that doesn't belong to
 - An Anthropic **organisation** account. The usage API isn't available on individual accounts.
 - An **Admin API key** (starts with `sk-ant-admin`). An org admin can create one in the Console under Settings → Admin keys.
 - An email account that can send over SMTP, such as a Gmail app password.
-- Python 3.8 or later.
+- Python 3.8 or later on macOS, Linux (including Raspberry Pi) or Windows.
 
 ## Install on macOS
 
@@ -52,6 +52,18 @@ bash setup.sh
 This installs to `~/claude-usage-emailer` and adds a cron job for 08:00 in the machine's own timezone. Check the timezone with `timedatectl`, and set it with `sudo timedatectl set-timezone <Area/City>` if needed.
 
 If you'd rather use systemd, run `SCHEDULER=systemd bash setup.sh`. It sets up a user timer with `Persistent=true`, so a run missed while the machine was off happens at the next boot. On a headless machine, also run `sudo loginctl enable-linger $USER` so the timer keeps running when you're logged out.
+
+## Install on Windows
+
+1. Install Python 3 from python.org and tick "Add python.exe to PATH".
+2. Download or clone this repo, open PowerShell in the folder, and run:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File setup.ps1
+   ```
+
+This installs to `%USERPROFILE%\claude-usage-emailer`, creates `config.json` readable only by your user, and adds a Task Scheduler task for 08:00 every day. If the PC is off at 08:00, the task runs as soon as it's back on. You can change the time with `-Hour 7 -Minute 30`.
+
+On Windows, swap `python3 ~/claude-usage-emailer/usage_report.py` in the commands below for `py %USERPROFILE%\claude-usage-emailer\usage_report.py`.
 
 ## Configure
 
@@ -95,9 +107,18 @@ If you have an AI agent on the machine, point it at [AGENT_SETUP.md](AGENT_SETUP
 
 ## Uninstall
 
+macOS and Linux:
+
 ```bash
 bash ~/claude-usage-emailer/setup.sh --uninstall
 rm -rf ~/claude-usage-emailer
+```
+
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File $env:USERPROFILE\claude-usage-emailer\setup.ps1 -Uninstall
+Remove-Item -Recurse $env:USERPROFILE\claude-usage-emailer
 ```
 
 ## License

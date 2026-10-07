@@ -23,7 +23,7 @@ from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from pathlib import Path
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 API = "https://api.anthropic.com/v1/organizations"
 HERE = Path(__file__).resolve().parent

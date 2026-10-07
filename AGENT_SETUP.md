@@ -10,8 +10,10 @@ You are installing claude-usage-emailer on this machine. It is one Python script
    SMTP_HOST=smtp.example.com SMTP_PORT=587 SMTP_FROM=reports@example.com \
    SMTP_USERNAME=reports@example.com SMTP_PASSWORD='...' bash setup.sh
    ```
-   It is safe to run more than once. It installs to `~/claude-usage-emailer`, creates `config.json` and schedules a daily run (launchd on macOS, cron on Linux).
-3. If you can't find any SMTP credentials, run `bash setup.sh` without them. Tell the owner that the `smtp` section of `config.json` still needs filling in.
+   On Windows, set the same variables with `$env:SMTP_HOST = "..."` and so on, then run `powershell -ExecutionPolicy Bypass -File setup.ps1`.
+
+   It is safe to run more than once. It installs to `~/claude-usage-emailer` (`%USERPROFILE%\claude-usage-emailer` on Windows), creates `config.json` and schedules a daily run: launchd on macOS, cron on Linux, Task Scheduler on Windows.
+3. If you can't find any SMTP credentials, run the installer without them. Tell the owner that the `smtp` section of `config.json` still needs filling in.
 4. **Fill in `members` only if the owner told you who they are.** Otherwise leave the example entries and tell the owner to edit them. Running `usage_report.py --check` lists the real workspaces and keys once the admin key is in.
 5. **Do not create, request or handle the Anthropic Admin API key.** Tell the owner to:
    - create one in the Claude Console under Settings → Admin keys

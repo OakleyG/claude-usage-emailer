@@ -14,7 +14,7 @@ set -euo pipefail
 OS="$(uname)"
 case "$OS" in
   Darwin|Linux) ;;
-  *) echo "Unsupported system: $OS. setup.sh supports macOS and Linux."; exit 1 ;;
+  *) echo "Unsupported system: $OS. On Windows use setup.ps1."; exit 1 ;;
 esac
 
 SRC="$(cd "$(dirname "$0")" && pwd)"
