@@ -1,0 +1,22 @@
+{
+  "admin_key": "PASTE_ADMIN_KEY_HERE",
+  "cost_amount_unit": "cents",
+
+  "send_mode": "digest",
+  "digest_recipients": [],
+  "show_unassigned": true,
+
+  "smtp": {
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "from": "",
+    "username": "",
+    "password": ""
+  },
+
+  "members": [
+    { "name": "Alice", "email": "alice@example.com", "workspace": "Alice's Workspace", "monthly_budget_usd": 100 },
+    { "name": "Bob",   "email": "bob@example.com",   "workspace": "Bob's Workspace" },
+    { "name": "Carol", "email": "carol@example.com", "api_keys": ["carol-laptop", "carol-server"] }
+  ]
+}
